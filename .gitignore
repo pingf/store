@@ -1,0 +1,8 @@
+.cache/
+.coverage
+.idea/
+dist/
+build/
+store.egg-info/
+
+
