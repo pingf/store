@@ -5,4 +5,5 @@ dist/
 build/
 store.egg-info/
 
+**/__pycache__/*
 
