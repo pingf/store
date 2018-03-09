@@ -1,11 +1,15 @@
 from store.base import BaseStore
+from store.elastic import ElasticStore
 from store.etcd import ETCDStore
+from store.seaweed import SeaweedStore
 
 
 class Manager:
     # pylint: disable=too-few-public-methods,no-member
     proxies = {
-        'etcd': ETCDStore
+        'etcd': ETCDStore,
+        'elastic': ElasticStore,
+        'seaweed': SeaweedStore
     }
 
     def __new__(cls, name, data):

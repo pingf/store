@@ -25,9 +25,9 @@ class ElasticStore(BaseStore):
         #          {"host": "xx.xxx.x.xx"},
         #          {"host": "xx.xxx.x.xx"}, ]
         index = data.get('index')
+        self.index = index
         settings = data.get('settings')
         mappings = data.get('mappings')
-        self.index = None
 
         # hosts = [
         #     {"host": data.get('host', '127.0.0.1'), "port": data.get('port', 9200)},
@@ -40,7 +40,9 @@ class ElasticStore(BaseStore):
             sniff_on_connection_fail=True,
             sniffer_timeout=600
         )
-        self.create_index(index, settings=settings, mappings=mappings)
+        create = data.get('create')
+        if create:
+            self.create_index(index, settings=settings, mappings=mappings)
 
         self.ids = set()
 
@@ -67,6 +69,7 @@ class ElasticStore(BaseStore):
                 self.log.error('index create failed!')
         else:
             self.log.warning('index already existed')
+
 
     def bool_query(self, bool_query_fields, bool_query_type='must', sort='@timestamp:desc', from_=None, to_='now',
                    offset=0,
@@ -177,8 +180,8 @@ class ElasticStore(BaseStore):
 
 if __name__ == '__main__':
     store = ElasticStore({"body": {}, 'index': 'store'})
-    # store.create_index('store')
-    # store.create({'hello': 'world'})
+    store.create_index('store')
+    store.create({'hello': 'world'})
     store.read({'hello': 'world'})
     store.read('upbiBWIBcLxfSztCbbZC')
     print('....................')
@@ -188,4 +191,4 @@ if __name__ == '__main__':
     store.update('1111', {'test': '123'})
     print('....................')
     resp = store.delete('1111')
-    print(resp)
+    # print(resp)

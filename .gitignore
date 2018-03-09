@@ -6,4 +6,5 @@ build/
 store.egg-info/
 
 **/__pycache__/*
+test.txt
 
