@@ -29,9 +29,10 @@ class ElasticStore(BaseStore):
         mappings = data.get('mappings')
         self.index = None
 
-        hosts = [
-            {"host": data.get('host', '127.0.0.1'), "port": data.get('port', 9200)},
-        ]
+        # hosts = [
+        #     {"host": data.get('host', '127.0.0.1'), "port": data.get('port', 9200)},
+        # ]
+        hosts = data.get('hosts', [{'host': '127.0.0.1', 'port': 9200}])
 
         self.store = elasticsearch.Elasticsearch(
             hosts,
