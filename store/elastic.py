@@ -1,3 +1,7 @@
+import json
+import logging
+from datetime import datetime
+
 import elasticsearch
 
 from store.base import BaseStore, transform_key
@@ -13,11 +17,17 @@ def transform(key):
 
 class ElasticStore(BaseStore):
     def __init__(self, data):
+        log = data.get('log', 'store')
+        self.log = logging.getLogger(log)
+
         # hosts = [{"host": "xx.xxx.x.xx"},
         #          {"host": "xx.xxx.x.xx"},
         #          {"host": "xx.xxx.x.xx"},
         #          {"host": "xx.xxx.x.xx"}, ]
-        self.index=None
+        index = data.get('index')
+        settings = data.get('settings')
+        mappings = data.get('mappings')
+        self.index = None
 
         hosts = [
             {"host": data.get('host', '127.0.0.1'), "port": data.get('port', 9200)},
@@ -29,6 +39,9 @@ class ElasticStore(BaseStore):
             sniff_on_connection_fail=True,
             sniffer_timeout=600
         )
+        self.create_index(index, settings=settings, mappings=mappings)
+
+        self.ids = set()
 
     def read_index(self, index='default'):
         return self.store.indices.get(index=index)
@@ -38,19 +51,25 @@ class ElasticStore(BaseStore):
         try:
             existed_index = self.read_index(index=index)
         except elasticsearch.exceptions.NotFoundError as exc:
-            pass
-        else:
-
+            # None can not be set to body, so {} is needed
             body = {
-                "settings": {index: settings},
+                "settings": {
+                    index: settings or {}
+                },
                 "mappings": {
-                    index: {"properties": mappings}
+                    index: {"properties": mappings or {}}
                 }
             }
-            resp = self.store.indices.create(index=index, body=body)
+            try:
+                resp = self.store.indices.create(index=self.index, body=body)
+            except elasticsearch.TransportError as e:
+                self.log.error('index create failed!')
+        else:
+            self.log.warning('index already existed')
 
-    def bool_query(self, bool_query_fields, bool_query_type='must', sort='@timestamp:desc', from_=None, to_='now', offset=0,
-              size=1000, timefield='@timestamp'):
+    def bool_query(self, bool_query_fields, bool_query_type='must', sort='@timestamp:desc', from_=None, to_='now',
+                   offset=0,
+                   size=1000, timefield='@timestamp'):
         body = {
             "query": {
                 "bool": {
@@ -70,45 +89,102 @@ class ElasticStore(BaseStore):
                 }
             }]
         res = self.store.search(index=self.index,
-                             from_=offset,
-                             size=size,
-                             sort=sort,
-                             body=body)
+                                from_=offset,
+                                size=size,
+                                sort=sort,
+                                body=body)
         return res
 
-    def create(self, key, value, lease=None):
+    def create(self, data, id_=None, extra=None):
+        # pylint: disable=arguments-differ
+        data['@timestamp'] = datetime.utcnow(),
+        if isinstance(extra, dict):
+            data.update(extra)
+
+        res = self.store.index(index=self.index, doc_type=self.index, body=data, id=id_)
+        if isinstance(res, dict):
+            res_id = res.get('_id')
+            if res_id not in self.ids:
+                self.ids.add(res_id)
+        return res
+
+    def read(self, key, from_='now-30d', to_='now'):
+        # pylint: disable=arguments-differ
+        if isinstance(key, str):
+            try:
+                res = self.store.get(index=self.index, doc_type=self.index, id=key)
+                res = {'total': 1, 'data': res}
+
+            except elasticsearch.exceptions.NotFoundError as exc:
+                res = {'total': 0, 'data': None}
+        else:
+            res = self.bool_query(bool_query_fields=key, from_=from_, to_=to_)
+            hits = res.get('hits')
+            if isinstance(hits, dict):
+                total = hits.get('total')
+                finds = hits.get('hits')
+                res = {'total': total, 'data': finds}
+        print(json.dumps(res, indent=2))
+        return res
+
+    def update(self, key, value):
         # pylint: disable=arguments-differ
         data = self.read(key)
-        return data if data[0] else self.update(key, value, lease)
+        if isinstance(data, dict):
+            total = data.get('total')
+            if total and total > 0:
+                if total == 1:
+                    # key is str
+                    id_ = data.get('data').get('_id')
+                    self.store.update(index=self.index, doc_type=self.index, id=id_, body={
+                        # script is more powerful here
+                        "doc": value
+                    })
+                else:
+                    for d in data:
+                        id_ = d.get('data').get('_id')
+                        self.store.update(index=self.index, doc_type=self.index, id=id_, body={
+                            # script is more powerful here
+                            "doc": value
+                        })
+                return self.read(key)
+        if isinstance(key, dict):
+            key.update(value)
+            self.create(key)
+        else:
+            self.create(data=value, id_=key)
+        return self.read(key)
 
-    @transform_key
-    def read(self, key, from_=None, to_='now'):
-        # pylint: disable=arguments-differ
-        res = self.bool_query(bool_query_fields=key, from_=from_, to_=to_)
-        return res
-
-
-    def update(self, key, value, lease=None):
-        # pylint: disable=arguments-differ
-        self.store.put(key, value, lease)
-        value = self.read(key)
-        return value
-
-    def delete(self, key, prefix=False):
-        # pylint: disable=arguments-differ
-        return self.store.delete_prefix(key) if prefix else self.store.delete(key)
-
-    @transform_key
-    def __contains__(self, key):
-        return self.read(key)[0] is not None
-
-    def __iter__(self):
-        return iter(self.read('/', prefix=True))
-
-    def __len__(self):
-        return len(self.read('/', prefix=True))
+    def delete(self, key):
+        data = self.read(key)
+        if isinstance(data, dict):
+            total = data.get('total')
+            if total and total > 0:
+                if total == 1:
+                    id_ = data.get('data').get('_id')
+                    self.store.delete(index=self.index, doc_type=self.index, id=id_)
+                    if id_ in self.ids:
+                        self.ids.remove(id_)
+                else:
+                    for d in data:
+                        id_ = d.get('data').get('_id')
+                        self.store.delete(index=self.index, doc_type=self.index, id=id_)
+                        if id_ in self.ids:
+                            self.ids.remove(id_)
+                return self.read(key)
 
 
 if __name__ == '__main__':
-    print('>>>>>>>>>>>')
-    ElasticStore({"body": {}})
+    store = ElasticStore({"body": {}, 'index': 'store'})
+    # store.create_index('store')
+    # store.create({'hello': 'world'})
+    store.read({'hello': 'world'})
+    store.read('upbiBWIBcLxfSztCbbZC')
+    print('....................')
+    store.update('upbiBWIBcLxfSztCbbZC', {'test': '123'})
+    store.read('upbiBWIBcLxfSztCbbZC')
+    print('....................')
+    store.update('1111', {'test': '123'})
+    print('....................')
+    resp = store.delete('1111')
+    print(resp)
