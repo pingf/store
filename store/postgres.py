@@ -1,6 +1,7 @@
+from copy import copy
 from datetime import datetime
 
-from pony.orm import Database, Required, Json, db_session, select
+from pony.orm import Database, Required, Json, db_session, select, commit
 from pony.orm import delete as db_delete
 
 from store.base import BaseStore
@@ -39,8 +40,6 @@ class PostgresStore(BaseStore):
             self.Store(key=key, value=value)
             self.ids.add(key)
         else:
-            value_db = elem.value
-            value_db.update(value)
             elem.value = value
 
     @db_session
@@ -54,14 +53,19 @@ class PostgresStore(BaseStore):
         return None
 
     @db_session
-    def update(self, key, value, mode='data'):
+    def update(self, key, value):
         elem = select(e for e in self.Store if e.key == key).first()
         if elem is None:
             return
         else:
-            value_db = elem.value
-            value_db.update(value)
-            elem.value = value
+            value_db = copy(elem.value)
+            if isinstance(value_db, dict) and isinstance(value, dict):
+                value_db.update(value)
+                elem.value = value_db
+            elif isinstance(value_db, list) and isinstance(value, list):
+                vv = [v for v in value if v not in value_db]
+                value_db.extend(vv)
+                elem.value = value_db
 
     @db_session
     def delete(self, key):
@@ -93,7 +97,74 @@ class PostgresStore(BaseStore):
         return results
 
     @db_session
-    def query_in(self, value):
+    def add(self, key, value):
+        # value must be a list
+        elem = select(e for e in self.Store if e.key == key).first()
+        if elem:
+            value_db = copy(elem.value)
+            if isinstance(value_db, list):
+                if isinstance(value, str):
+                    vs = [value] if value not in value_db else []
+                else:
+                    vs = [v for v in value if v not in value_db]
+                value_db.extend(vs)
+                elem.value = value_db
+                commit()
+            if key not in self.ids:
+                self.ids.add(key)
+        else:
+            if isinstance(value, str):
+                self.Store(key=key, value=[value])
+            else:
+                self.Store(key=key, value=value)
+            if key not in self.ids:
+                self.ids.add(key)
+        elem = select(e for e in self.Store if e.key == key).first()
+        return {
+            'key': elem.key,
+            'value': elem.value
+        }
+
+    @db_session
+    def remove(self, key, value):
+        # value must be a list
+        elem = select(e for e in self.Store if e.key == key).first()
+        if elem:
+            value_db = copy(elem.value)
+            if isinstance(value_db, list):
+                if isinstance(value, str):
+                    vs = [value] if value in value_db else []
+                else:
+                    vs = [v for v in value if v in value_db]
+                for vv in vs:
+                    value_db.remove(vv)
+                elem.value = value_db
+                commit()
+        elem = select(e for e in self.Store if e.key == key).first()
+        return {
+            'key': elem.key,
+            'value': elem.value
+        }
+
+    @db_session
+    def query(self, value):
+        # value must be a list
+
+        elemss = []
+        for i, v in enumerate(value):
+            elems = select(e for e in self.Store if v in e.value)[:]
+            elemss.extend(elems)
+        results = []
+        for elem in elemss:
+            e = {
+                'key': elem.key,
+                'value': elem.value
+            }
+            results.append(e)
+        return results
+
+    @db_session
+    def queryd(self, value):
         # select from list, key must be matched, value is or relation
         keys = []
         values = []
@@ -131,11 +202,22 @@ if __name__ == '__main__':
     s.create('7', {'t': ["明天", "幸福"]})
     s.create('8', {'t2': ["明天", "幸福"]})
     s.create('9', {'t3': ["明天", "幸福"]})
+    s.create('10', {'测试': ["明天", "幸福"]})
+    s.create('11', ['测试'])
     # r = s.query('hello')
-    r = s.query_in({'t': ["世界", "1995"]})
+    r = s.queryd({'t': ["世界", "1995"]})
     print(r)
-    r = s.query_in({'t': ["幸福"]})
+    r = s.queryd({'t': ["幸福"]})
     print(r)
+    r = s.query(["测试"])
+    print(r)
+    print('.' * 80)
+    s.add('12', "t1")
+    s.add('12', ["t1"])
+    s.add('12', ["t1", "t2", "t3", "t4"])
+    s.remove('12', "t1")
+    s.remove('12', ["t2", "t4"])
+
     # r = s.query({'hello': 'world'})
     # print(r)
     # r = s.query({'hello':{1:'world', 2: '世界'}})
