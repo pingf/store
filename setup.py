@@ -14,7 +14,7 @@ def read(fname):
 
 setup(
     name='store',
-    version='2018.03.13',
+    version='2018.03.14',
     url='https://github.com/pingf/store.git',
     license='BSD',
     author='Jesse MENG',

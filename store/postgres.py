@@ -82,26 +82,6 @@ class PostgresStore(BaseStore):
             if key in self.ids:
                 self.ids.remove(key)
 
-    @db_session
-    def query(self, value):
-        keys = []
-        values = []
-        for k, v in value.items():
-            keys.append(k)
-            values.append(v)
-
-        elemss = []
-        for i, k in enumerate(keys):
-            elems = select(e for e in self.Store if k in e.value and e.value[k] == values[i])[:]
-            elemss.extend(elems)
-        results = []
-        for elem in elemss:
-            e = {
-                'key': elem.key,
-                'value': elem.value
-            }
-            results.append(e)
-        return results
 
     @db_session
     def add(self, key, value):
