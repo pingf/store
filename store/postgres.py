@@ -29,7 +29,11 @@ class PostgresStore(BaseStore):
 
                     )
 
-        self.Store = type("Store", (self.db.Entity,), body)
+        table = data.get("table", "Store")
+        if table[0].islower():
+            table = table[0].upper() + table[1:]
+
+        self.Store = type(table, (self.db.Entity,), body)
         self.db.generate_mapping(create_tables=True, check_tables=True)
         self.ids = set()
 
@@ -197,7 +201,7 @@ class PostgresStore(BaseStore):
 
 
 if __name__ == '__main__':
-    s = PostgresStore({})
+    s = PostgresStore({"table": "hello_world"})
     s.create('1', {1: 3})
     s.create('2', {'hello': 'world'})
     s.create('3', {'hello': {1: 'world', 2: '世界'}})
