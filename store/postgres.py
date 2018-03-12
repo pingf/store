@@ -138,7 +138,8 @@ class PostgresStore(BaseStore):
     @db_session
     def query(self, value):
         # value must be a list
-
+        if isinstance(value, str):
+            value = [value]
         elemss = []
         for i, v in enumerate(value):
             elems = select(e for e in self.Store if v in e.value)[:]
@@ -199,6 +200,7 @@ if __name__ == '__main__':
     r = s.queryd({'t': ["幸福"]})
     print(r)
     r = s.query(["测试"])
+    r = s.query("测试")
     print(r)
     print('.' * 80)
     s.add('12', "t1")
