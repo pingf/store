@@ -41,6 +41,7 @@ class PostgresStore(BaseStore):
             self.ids.add(key)
         else:
             elem.value = value
+            elem.update_at = datetime.utcnow()
 
     @db_session
     def read(self, key):
@@ -62,10 +63,12 @@ class PostgresStore(BaseStore):
             if isinstance(value_db, dict) and isinstance(value, dict):
                 value_db.update(value)
                 elem.value = value_db
+                elem.update_at = datetime.utcnow()
             elif isinstance(value_db, list) and isinstance(value, list):
                 vv = [v for v in value if v not in value_db]
                 value_db.extend(vv)
                 elem.value = value_db
+                elem.update_at = datetime.utcnow()
 
     @db_session
     def delete(self, key):
@@ -109,6 +112,7 @@ class PostgresStore(BaseStore):
                     vs = [v for v in value if v not in value_db]
                 value_db.extend(vs)
                 elem.value = value_db
+                elem.update_at = datetime.utcnow()
                 commit()
             if key not in self.ids:
                 self.ids.add(key)
@@ -139,6 +143,7 @@ class PostgresStore(BaseStore):
                 for vv in vs:
                     value_db.remove(vv)
                 elem.value = value_db
+                elem.update_at = datetime.utcnow()
                 commit()
         elem = select(e for e in self.Store if e.key == key).first()
         return {
