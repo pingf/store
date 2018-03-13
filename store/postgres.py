@@ -82,7 +82,6 @@ class PostgresStore(BaseStore):
             if key in self.ids:
                 self.ids.remove(key)
 
-
     @db_session
     def add(self, key, value):
         # value must be a list
@@ -180,6 +179,53 @@ class PostgresStore(BaseStore):
             results.append(e)
         return results
 
+    @db_session
+    def reads(self, keys):
+        results = []
+        for key in keys:
+            elem = select(e for e in self.Store if e.key == key).first()
+            if elem:
+                results.append({
+                    'key': elem.key,
+                    'value': elem.value,
+                })
+        return results
+
+    @db_session
+    def read_prefix(self, key, pagenum=1, pagesize=20):
+        elems = select(e for e in self.Store if e.key.startswith(key)).page(pagenum=pagenum, pagesize=pagesize)
+        results =[]
+        for elem in elems:
+            results.append({
+                'key': elem.key,
+                'value': elem.value,
+            })
+        return results
+
+    @db_session
+    def read_suffix(self, key, pagenum=1, pagesize=20):
+        elems = select(e for e in self.Store if e.key.endswith(key)).page(pagenum=pagenum, pagesize=pagesize)
+        results =[]
+        for elem in elems:
+            results.append({
+                'key': elem.key,
+                'value': elem.value,
+            })
+        return results
+
+    @db_session
+    def read_in(self, key, pagenum=1, pagesize=20):
+        elems = select(e for e in self.Store if key in e.key).page(pagenum=pagenum, pagesize=pagesize)
+        results =[]
+        for elem in elems:
+            results.append({
+                'key': elem.key,
+                'value': elem.value,
+            })
+        return results
+
+
+
 
 if __name__ == '__main__':
     s = PostgresStore({"table": "hello_world"})
@@ -208,6 +254,16 @@ if __name__ == '__main__':
     s.add('12', ["t1", "t2", "t3", "t4"])
     s.remove('12', "t1")
     s.remove('12', ["t2", "t4"])
+    print('.' * 80)
+    s.create('http://127.0.0.1', ['测试'])
+    s.create('https://127.0.0.1', ['测试'])
+    r = s.read_prefix('https')
+    print(r)
+    r = s.read_in('')
+    print(r)
+    r = s.reads(['1', '2'])
+    print(r)
+    # r = s.query('hello')
 
     # r = s.query({'hello': 'world'})
     # print(r)

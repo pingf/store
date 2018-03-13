@@ -14,7 +14,7 @@ def read(fname):
 
 setup(
     name='store',
-    version='2018.03.15',
+    version='2018.03.16',
     url='https://github.com/pingf/store.git',
     license='BSD',
     author='Jesse MENG',
@@ -32,7 +32,8 @@ setup(
     # },
     platforms='any',
     install_requires=[
-        'termcc', 'loader', 'etcd3'
+        'termcc', 'loader', 'etcd3', 'elasticsearch',
+        'psycopg2cffi', 'pyseaweed', 'pony'
     ],
     classifiers=[
         'Intended Audience :: Developers',
