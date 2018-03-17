@@ -70,7 +70,6 @@ class ElasticStore(BaseStore):
         else:
             self.log.warning('index already existed')
 
-
     def bool_query(self, bool_query_fields, bool_query_type='must', sort='@timestamp:desc', from_=None, to_='now',
                    offset=0,
                    size=1000, timefield='@timestamp'):
@@ -112,7 +111,7 @@ class ElasticStore(BaseStore):
                 self.ids.add(res_id)
         return res
 
-    def read(self, key, from_='now-30d', to_='now'):
+    def read(self, key, from_='now-30d', to_='now', offset=0, size=1000):
         # pylint: disable=arguments-differ
         if isinstance(key, str):
             try:
@@ -122,7 +121,7 @@ class ElasticStore(BaseStore):
             except elasticsearch.exceptions.NotFoundError as exc:
                 res = {'total': 0, 'data': None}
         else:
-            res = self.bool_query(bool_query_fields=key, from_=from_, to_=to_)
+            res = self.bool_query(bool_query_fields=key, from_=from_, to_=to_, offset=offset, size=size)
             hits = res.get('hits')
             if isinstance(hits, dict):
                 total = hits.get('total')
