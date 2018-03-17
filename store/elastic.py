@@ -127,7 +127,6 @@ class ElasticStore(BaseStore):
                 total = hits.get('total')
                 finds = hits.get('hits')
                 res = {'total': total, 'data': finds}
-        print(json.dumps(res, indent=2))
         return res
 
     def update(self, key, value):
