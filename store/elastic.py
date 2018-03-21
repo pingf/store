@@ -32,14 +32,8 @@ class ElasticStore(BaseStore):
         # hosts = [
         #     {"host": data.get('host', '127.0.0.1'), "port": data.get('port', 9200)},
         # ]
-        hosts = data.get('hosts', [{'host': '127.0.0.1', 'port': 9200}])
+        self.hosts = data.get('hosts', [{'host': '127.0.0.1', 'port': 9200}])
 
-        self.store = elasticsearch.Elasticsearch(
-            hosts,
-            sniff_on_start=True,
-            sniff_on_connection_fail=True,
-            sniffer_timeout=600
-        )
         create = data.get('create')
         if create:
             self.create_index(index, settings=settings, mappings=mappings)
@@ -47,9 +41,22 @@ class ElasticStore(BaseStore):
         self.ids = set()
 
     def read_index(self, index='default'):
-        return self.store.indices.get(index=index)
+
+        store = elasticsearch.Elasticsearch(
+            self.hosts,
+            sniff_on_start=True,
+            sniff_on_connection_fail=True,
+            sniffer_timeout=600
+        )
+        return store.indices.get(index=index)
 
     def create_index(self, index='default', settings=None, mappings=None):
+        store = elasticsearch.Elasticsearch(
+            self.hosts,
+            sniff_on_start=True,
+            sniff_on_connection_fail=True,
+            sniffer_timeout=600
+        )
         self.index = index
         try:
             existed_index = self.read_index(index=index)
@@ -64,7 +71,7 @@ class ElasticStore(BaseStore):
                 }
             }
             try:
-                resp = self.store.indices.create(index=self.index, body=body)
+                resp = store.indices.create(index=self.index, body=body)
             except elasticsearch.TransportError as e:
                 self.log.error('index create failed!')
         else:
@@ -73,6 +80,12 @@ class ElasticStore(BaseStore):
     def bool_query(self, bool_query_fields, bool_query_type='must', sort='@timestamp:desc', from_=None, to_='now',
                    offset=0,
                    size=1000, timefield='@timestamp'):
+        store = elasticsearch.Elasticsearch(
+            self.hosts,
+            sniff_on_start=True,
+            sniff_on_connection_fail=True,
+            sniffer_timeout=600
+        )
         body = {
             "query": {
                 "bool": {
@@ -91,7 +104,7 @@ class ElasticStore(BaseStore):
                     }
                 }
             }]
-        res = self.store.search(index=self.index,
+        res = store.search(index=self.index,
                                 from_=offset,
                                 size=size,
                                 sort=sort,
@@ -99,12 +112,18 @@ class ElasticStore(BaseStore):
         return res
 
     def create(self, data, id_=None, extra=None):
-        # pylint: disable=arguments-differ
+        store = elasticsearch.Elasticsearch(
+            self.hosts,
+            sniff_on_start=True,
+            sniff_on_connection_fail=True,
+            sniffer_timeout=600
+        )
+
         data['@timestamp'] = datetime.utcnow(),
         if isinstance(extra, dict):
             data.update(extra)
 
-        res = self.store.index(index=self.index, doc_type=self.index, body=data, id=id_)
+        res = store.index(index=self.index, doc_type=self.index, body=data, id=id_)
         if isinstance(res, dict):
             res_id = res.get('_id')
             if res_id not in self.ids:
@@ -112,10 +131,15 @@ class ElasticStore(BaseStore):
         return res
 
     def read(self, key, from_='now-30d', to_='now', offset=0, size=1000):
-        # pylint: disable=arguments-differ
+        store = elasticsearch.Elasticsearch(
+            self.hosts,
+            sniff_on_start=True,
+            sniff_on_connection_fail=True,
+            sniffer_timeout=600
+        )
         if isinstance(key, str):
             try:
-                res = self.store.get(index=self.index, doc_type=self.index, id=key)
+                res = store.get(index=self.index, doc_type=self.index, id=key)
                 res = {'total': 1, 'data': res}
 
             except elasticsearch.exceptions.NotFoundError as exc:
@@ -130,7 +154,12 @@ class ElasticStore(BaseStore):
         return res
 
     def update(self, key, value):
-        # pylint: disable=arguments-differ
+        store = elasticsearch.Elasticsearch(
+            self.hosts,
+            sniff_on_start=True,
+            sniff_on_connection_fail=True,
+            sniffer_timeout=600
+        )
         data = self.read(key)
         if isinstance(data, dict):
             total = data.get('total')
@@ -138,14 +167,14 @@ class ElasticStore(BaseStore):
                 if total == 1:
                     # key is str
                     id_ = data.get('data').get('_id')
-                    self.store.update(index=self.index, doc_type=self.index, id=id_, body={
+                    store.update(index=self.index, doc_type=self.index, id=id_, body={
                         # script is more powerful here
                         "doc": value
                     })
                 else:
                     for d in data:
                         id_ = d.get('data').get('_id')
-                        self.store.update(index=self.index, doc_type=self.index, id=id_, body={
+                        store.update(index=self.index, doc_type=self.index, id=id_, body={
                             # script is more powerful here
                             "doc": value
                         })
@@ -158,19 +187,25 @@ class ElasticStore(BaseStore):
         return self.read(key)
 
     def delete(self, key):
+        store = elasticsearch.Elasticsearch(
+            self.hosts,
+            sniff_on_start=True,
+            sniff_on_connection_fail=True,
+            sniffer_timeout=600
+        )
         data = self.read(key)
         if isinstance(data, dict):
             total = data.get('total')
             if total and total > 0:
                 if total == 1:
                     id_ = data.get('data').get('_id')
-                    self.store.delete(index=self.index, doc_type=self.index, id=id_)
+                    store.delete(index=self.index, doc_type=self.index, id=id_)
                     if id_ in self.ids:
                         self.ids.remove(id_)
                 else:
                     for d in data:
                         id_ = d.get('data').get('_id')
-                        self.store.delete(index=self.index, doc_type=self.index, id=id_)
+                        store.delete(index=self.index, doc_type=self.index, id=id_)
                         if id_ in self.ids:
                             self.ids.remove(id_)
                 return self.read(key)
