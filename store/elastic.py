@@ -44,18 +44,18 @@ class ElasticStore(BaseStore):
 
         store = elasticsearch.Elasticsearch(
             self.hosts,
-            sniff_on_start=True,
-            sniff_on_connection_fail=True,
-            sniffer_timeout=600
+            # sniff_on_start=True,
+            # sniff_on_connection_fail=True,
+            # sniffer_timeout=600
         )
         return store.indices.get(index=index)
 
     def create_index(self, index='default', settings=None, mappings=None):
         store = elasticsearch.Elasticsearch(
             self.hosts,
-            sniff_on_start=True,
-            sniff_on_connection_fail=True,
-            sniffer_timeout=600
+            # sniff_on_start=True,
+            # sniff_on_connection_fail=True,
+            # sniffer_timeout=600
         )
         self.index = index
         try:
@@ -77,49 +77,48 @@ class ElasticStore(BaseStore):
         else:
             self.log.warning('index already existed')
 
-    def bool_query(self, bool_query_fields, bool_query_type='must', sort='@timestamp:desc', from_=None, to_='now',
+    def bool_query(self, must_fields=None, filter_fields=None, should_fields=None, must_not_fields=None,
+                   sort='@timestamp:desc',  # from_=None, to_='now',
                    offset=0,
-                   size=1000, timefield='@timestamp'):
+                   size=1000):
         store = elasticsearch.Elasticsearch(
             self.hosts,
-            sniff_on_start=True,
-            sniff_on_connection_fail=True,
-            sniffer_timeout=600
+            # sniff_on_start=True,
+            # sniff_on_connection_fail=True,
+            # sniffer_timeout=600
         )
+        # "term", "range", ...
         body = {
-            "query": {
-                "bool": {
-                    bool_query_type: [
-                        {"term": {k: v}} for k, v in bool_query_fields.items()
-                    ]
-                }
-            },
+            "query": {"bool": {}},
         }
-        if from_ is not None:
-            body['query']['bool']['filter'] = [{
-                "range": {
-                    timefield: {
-                        "gte": from_,
-                        "lt": to_
-                    }
-                }
-            }]
+        if must_fields:
+            body['query']['bool']['must'] = must_fields
+        if filter_fields:
+            body['query']['bool']['filter'] = filter_fields
+        if should_fields:
+            body['query']['bool']['should'] = should_fields
+        if must_not_fields:
+            body['query']['bool']['must_not'] = must_not_fields
+
         res = store.search(index=self.index,
-                                from_=offset,
-                                size=size,
-                                sort=sort,
-                                body=body)
+                           from_=offset,
+                           size=size,
+                           sort=sort,
+                           body=body)
+        return res
+
+    # def bool_query_type1(self, bool_query_fields, bool_query_type='must', sort='@timestamp:desc', from_=None, to_='now',
         return res
 
     def create(self, data, id_=None, extra=None):
         store = elasticsearch.Elasticsearch(
             self.hosts,
-            sniff_on_start=True,
-            sniff_on_connection_fail=True,
-            sniffer_timeout=600
+            # sniff_on_start=True,
+            # sniff_on_connection_fail=True,
+            # sniffer_timeout=600
         )
 
-        data['@timestamp'] = datetime.utcnow(),
+        data['@timestamp'] = datetime.utcnow()
         if isinstance(extra, dict):
             data.update(extra)
 
@@ -133,9 +132,9 @@ class ElasticStore(BaseStore):
     def read(self, key, from_='now-30d', to_='now', offset=0, size=1000):
         store = elasticsearch.Elasticsearch(
             self.hosts,
-            sniff_on_start=True,
-            sniff_on_connection_fail=True,
-            sniffer_timeout=600
+            # sniff_on_start=True,
+            # sniff_on_connection_fail=True,
+            # sniffer_timeout=600
         )
         if isinstance(key, str):
             try:
@@ -145,20 +144,23 @@ class ElasticStore(BaseStore):
             except elasticsearch.exceptions.NotFoundError as exc:
                 res = {'total': 0, 'data': None}
         else:
-            res = self.bool_query(bool_query_fields=key, from_=from_, to_=to_, offset=offset, size=size)
+            must_fields = [{"term": {k: v}} for k, v in key.items()]
+            filter_fields = [{"range": {"@timestamp": {"gte": from_, "lt": to_}}}]
+            res = self.bool_query(must_fields=must_fields, filter_fields=filter_fields, offset=offset, size=size)
             hits = res.get('hits')
             if isinstance(hits, dict):
                 total = hits.get('total')
                 finds = hits.get('hits')
                 res = {'total': total, 'data': finds}
+
         return res
 
     def update(self, key, value):
         store = elasticsearch.Elasticsearch(
             self.hosts,
-            sniff_on_start=True,
-            sniff_on_connection_fail=True,
-            sniffer_timeout=600
+            # sniff_on_start=True,
+            # sniff_on_connection_fail=True,
+            # sniffer_timeout=600
         )
         data = self.read(key)
         if isinstance(data, dict):
@@ -189,9 +191,9 @@ class ElasticStore(BaseStore):
     def delete(self, key):
         store = elasticsearch.Elasticsearch(
             self.hosts,
-            sniff_on_start=True,
-            sniff_on_connection_fail=True,
-            sniffer_timeout=600
+            # sniff_on_start=True,
+            # sniff_on_connection_fail=True,
+            # sniffer_timeout=600
         )
         data = self.read(key)
         if isinstance(data, dict):
