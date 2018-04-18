@@ -1,7 +1,7 @@
 from copy import copy
 from datetime import datetime
 
-from pony.orm import Database, Required, Json, db_session, select, commit
+from pony.orm import Database, Required, Json, db_session, select, commit, desc
 from pony.orm import delete as db_delete
 
 from store.base import BaseStore
@@ -39,7 +39,7 @@ class PostgresStore(BaseStore):
 
     @db_session
     def create(self, key, value):
-        elem = select(e for e in self.Store if e.key == key).first()
+        elem = select(e for e in self.Store if e.key == key).order_by(lambda o: desc(o.create_at)).first()
         if elem is None:
             self.Store(key=key, value=value)
             self.ids.add(key)
@@ -49,7 +49,7 @@ class PostgresStore(BaseStore):
 
     @db_session
     def read(self, key):
-        elem = select(e for e in self.Store if e.key == key).first()
+        elem = select(e for e in self.Store if e.key == key).order_by(lambda o: desc(o.create_at)).first()
         if elem:
             return {
                 'key': elem.key,
@@ -59,7 +59,7 @@ class PostgresStore(BaseStore):
 
     @db_session
     def update(self, key, value):
-        elem = select(e for e in self.Store if e.key == key).first()
+        elem = select(e for e in self.Store if e.key == key).order_by(lambda o: desc(o.create_at)).first()
         if elem is None:
             return
         else:
@@ -76,7 +76,7 @@ class PostgresStore(BaseStore):
 
     @db_session
     def delete(self, key):
-        elem = select(e for e in self.Store if e.key == key).first()
+        elem = select(e for e in self.Store if e.key == key).order_by(lambda o: desc(o.create_at)).first()
         if elem:
             db_delete(e for e in self.Store if e.key == key)
             if key in self.ids:
@@ -85,7 +85,7 @@ class PostgresStore(BaseStore):
     @db_session
     def add(self, key, value):
         # value must be a list
-        elem = select(e for e in self.Store if e.key == key).first()
+        elem = select(e for e in self.Store if e.key == key).order_by(lambda o: desc(o.create_at)).first()
         if elem:
             value_db = copy(elem.value)
             if isinstance(value_db, list):
@@ -106,7 +106,7 @@ class PostgresStore(BaseStore):
                 self.Store(key=key, value=value)
             if key not in self.ids:
                 self.ids.add(key)
-        elem = select(e for e in self.Store if e.key == key).first()
+        elem = select(e for e in self.Store if e.key == key).order_by(lambda o: desc(o.create_at)).first()
         return {
             'key': elem.key,
             'value': elem.value
@@ -115,7 +115,7 @@ class PostgresStore(BaseStore):
     @db_session
     def remove(self, key, value):
         # value must be a list
-        elem = select(e for e in self.Store if e.key == key).first()
+        elem = select(e for e in self.Store if e.key == key).order_by(lambda o: desc(o.create_at)).first()
         if elem:
             value_db = copy(elem.value)
             if isinstance(value_db, list):
@@ -128,7 +128,7 @@ class PostgresStore(BaseStore):
                 elem.value = value_db
                 elem.update_at = datetime.utcnow()
                 commit()
-        elem = select(e for e in self.Store if e.key == key).first()
+        elem = select(e for e in self.Store if e.key == key).order_by(lambda o: desc(o.create_at)).first()
         return {
             'key': elem.key,
             'value': elem.value
@@ -141,7 +141,7 @@ class PostgresStore(BaseStore):
             value = [value]
         elemss = []
         for i, v in enumerate(value):
-            elems = select(e for e in self.Store if v in e.value)[:]
+            elems = select(e for e in self.Store if v in e.value).order_by(lambda o: desc(o.create_at))[:]
             elemss.extend(elems)
         results = []
         for elem in elemss:
@@ -168,7 +168,7 @@ class PostgresStore(BaseStore):
 
         elemss = []
         for i, k in enumerate(keys):
-            elems = select(e for e in self.Store if k in e.value and values[i] in e.value[k])[:]
+            elems = select(e for e in self.Store if k in e.value and values[i] in e.value[k]).order_by(lambda o: desc(o.create_at))[:]
             elemss.extend(elems)
         results = []
         for elem in elemss:
@@ -183,7 +183,7 @@ class PostgresStore(BaseStore):
     def reads(self, keys):
         results = []
         for key in keys:
-            elem = select(e for e in self.Store if e.key == key).first()
+            elem = select(e for e in self.Store if e.key == key).order_by(lambda o: desc(o.create_at)).first()
             if elem:
                 results.append({
                     'key': elem.key,
@@ -193,7 +193,7 @@ class PostgresStore(BaseStore):
 
     @db_session
     def read_prefix(self, key, pagenum=1, pagesize=20):
-        elems = select(e for e in self.Store if e.key.startswith(key)).page(pagenum=pagenum, pagesize=pagesize)
+        elems = select(e for e in self.Store if e.key.startswith(key)).order_by(lambda o: desc(o.create_at)).page(pagenum=pagenum, pagesize=pagesize)
         results =[]
         for elem in elems:
             results.append({
@@ -204,7 +204,7 @@ class PostgresStore(BaseStore):
 
     @db_session
     def read_suffix(self, key, pagenum=1, pagesize=20):
-        elems = select(e for e in self.Store if e.key.endswith(key)).page(pagenum=pagenum, pagesize=pagesize)
+        elems = select(e for e in self.Store if e.key.endswith(key)).order_by(lambda o: desc(o.create_at)).page(pagenum=pagenum, pagesize=pagesize)
         results =[]
         for elem in elems:
             results.append({
@@ -215,7 +215,7 @@ class PostgresStore(BaseStore):
 
     @db_session
     def read_in(self, key, pagenum=1, pagesize=20):
-        elems = select(e for e in self.Store if key in e.key).page(pagenum=pagenum, pagesize=pagesize)
+        elems = select(e for e in self.Store if key in e.key).order_by(lambda o: desc(o.create_at)).page(pagenum=pagenum, pagesize=pagesize)
         results =[]
         for elem in elems:
             results.append({
