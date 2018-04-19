@@ -54,6 +54,8 @@ class PostgresStore(BaseStore):
             return {
                 'key': elem.key,
                 'value': elem.value,
+                'create_at': elem.create_at,
+                'update_at': elem.update_at,
             }
         return None
 
@@ -109,7 +111,9 @@ class PostgresStore(BaseStore):
         elem = select(e for e in self.Store if e.key == key).order_by(lambda o: desc(o.create_at)).first()
         return {
             'key': elem.key,
-            'value': elem.value
+            'value': elem.value,
+            'create_at': elem.create_at,
+            'update_at': elem.update_at,
         }
 
     @db_session
@@ -131,7 +135,9 @@ class PostgresStore(BaseStore):
         elem = select(e for e in self.Store if e.key == key).order_by(lambda o: desc(o.create_at)).first()
         return {
             'key': elem.key,
-            'value': elem.value
+            'value': elem.value,
+            'create_at': elem.create_at,
+            'update_at': elem.update_at,
         }
 
     @db_session
@@ -147,7 +153,9 @@ class PostgresStore(BaseStore):
         for elem in elemss:
             e = {
                 'key': elem.key,
-                'value': elem.value
+                'value': elem.value,
+                'create_at': elem.create_at,
+                'update_at': elem.update_at,
             }
             results.append(e)
         return results
@@ -174,7 +182,9 @@ class PostgresStore(BaseStore):
         for elem in elemss:
             e = {
                 'key': elem.key,
-                'value': elem.value
+                'value': elem.value,
+                'create_at': elem.create_at,
+                'update_at': elem.update_at,
             }
             results.append(e)
         return results
@@ -188,6 +198,8 @@ class PostgresStore(BaseStore):
                 results.append({
                     'key': elem.key,
                     'value': elem.value,
+                    'create_at': elem.create_at,
+                    'update_at': elem.update_at,
                 })
         return results
 
@@ -199,6 +211,8 @@ class PostgresStore(BaseStore):
             results.append({
                 'key': elem.key,
                 'value': elem.value,
+                'create_at': elem.create_at,
+                'update_at': elem.update_at,
             })
         return results
 
@@ -210,6 +224,8 @@ class PostgresStore(BaseStore):
             results.append({
                 'key': elem.key,
                 'value': elem.value,
+                'create_at': elem.create_at,
+                'update_at': elem.update_at,
             })
         return results
 
@@ -221,6 +237,8 @@ class PostgresStore(BaseStore):
             results.append({
                 'key': elem.key,
                 'value': elem.value,
+                'create_at': elem.create_at,
+                'update_at': elem.update_at,
             })
         return results
 
