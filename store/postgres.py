@@ -54,8 +54,8 @@ class PostgresStore(BaseStore):
             return {
                 'key': elem.key,
                 'value': elem.value,
-                'create_at': elem.create_at,
-                'update_at': elem.update_at,
+                'create_at': elem.create_at.strftime("%Y-%m-%d %H:%M:%S"),
+                'update_at': elem.update_at.strftime("%Y-%m-%d %H:%M:%S"),
             }
         return None
 
@@ -112,8 +112,8 @@ class PostgresStore(BaseStore):
         return {
             'key': elem.key,
             'value': elem.value,
-            'create_at': elem.create_at,
-            'update_at': elem.update_at,
+            'create_at': elem.create_at.strftime("%Y-%m-%d %H:%M:%S"),
+            'update_at': elem.update_at.strftime("%Y-%m-%d %H:%M:%S"),
         }
 
     @db_session
@@ -136,8 +136,8 @@ class PostgresStore(BaseStore):
         return {
             'key': elem.key,
             'value': elem.value,
-            'create_at': elem.create_at,
-            'update_at': elem.update_at,
+            'create_at': elem.create_at.strftime("%Y-%m-%d %H:%M:%S"),
+            'update_at': elem.update_at.strftime("%Y-%m-%d %H:%M:%S"),
         }
 
     @db_session
@@ -154,8 +154,8 @@ class PostgresStore(BaseStore):
             e = {
                 'key': elem.key,
                 'value': elem.value,
-                'create_at': elem.create_at,
-                'update_at': elem.update_at,
+                'create_at': elem.create_at.strftime("%Y-%m-%d %H:%M:%S"),
+                'update_at': elem.update_at.strftime("%Y-%m-%d %H:%M:%S"),
             }
             results.append(e)
         return results
@@ -183,8 +183,8 @@ class PostgresStore(BaseStore):
             e = {
                 'key': elem.key,
                 'value': elem.value,
-                'create_at': elem.create_at,
-                'update_at': elem.update_at,
+                'create_at': elem.create_at.strftime("%Y-%m-%d %H:%M:%S"),
+                'update_at': elem.update_at.strftime("%Y-%m-%d %H:%M:%S"),
             }
             results.append(e)
         return results
@@ -198,8 +198,8 @@ class PostgresStore(BaseStore):
                 results.append({
                     'key': elem.key,
                     'value': elem.value,
-                    'create_at': elem.create_at,
-                    'update_at': elem.update_at,
+                    'create_at': elem.create_at.strftime("%Y-%m-%d %H:%M:%S"),
+                    'update_at': elem.update_at.strftime("%Y-%m-%d %H:%M:%S"),
                 })
         return results
 
@@ -211,8 +211,8 @@ class PostgresStore(BaseStore):
             results.append({
                 'key': elem.key,
                 'value': elem.value,
-                'create_at': elem.create_at,
-                'update_at': elem.update_at,
+                'create_at': elem.create_at.strftime("%Y-%m-%d %H:%M:%S"),
+                'update_at': elem.update_at.strftime("%Y-%m-%d %H:%M:%S"),
             })
         return results
 
@@ -224,8 +224,8 @@ class PostgresStore(BaseStore):
             results.append({
                 'key': elem.key,
                 'value': elem.value,
-                'create_at': elem.create_at,
-                'update_at': elem.update_at,
+                'create_at': elem.create_at.strftime("%Y-%m-%d %H:%M:%S"),
+                'update_at': elem.update_at.strftime("%Y-%m-%d %H:%M:%S"),
             })
         return results
 
@@ -237,8 +237,8 @@ class PostgresStore(BaseStore):
             results.append({
                 'key': elem.key,
                 'value': elem.value,
-                'create_at': elem.create_at,
-                'update_at': elem.update_at,
+                'create_at': elem.create_at.strftime("%Y-%m-%d %H:%M:%S"),
+                'update_at': elem.update_at.strftime("%Y-%m-%d %H:%M:%S"),
             })
         return results
 
@@ -281,6 +281,8 @@ if __name__ == '__main__':
     print(r)
     r = s.reads(['1', '2'])
     print(r)
+    for a in r:
+        print(a)
     # r = s.query('hello')
 
     # r = s.query({'hello': 'world'})
